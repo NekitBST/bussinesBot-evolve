@@ -72,24 +72,34 @@ export class NotificationService {
         
         if (!business) continue;
 
-        if (sub.lowProductsNotification) {
-          const products = parseInt(business.products);
-          if (products < 2000) {
-            await this.sendNotification(chatId, business, '⚠️ Низкое количество продуктов!');
-            continue;
-          }
+        const products = parseInt(business.products);
+        const isLowProducts = products < 2000;
+
+        if (sub.lowProductsNotification && isLowProducts) {
+          await this.sendNotification(chatId, business, '⚠️ Низкое количество продуктов!', true);
+          continue;
         }
 
         if (sub.hourlyNotification) {
-          await this.sendNotification(chatId, business, '🕐 Ежечасный отчет');
+          await this.sendNotification(chatId, business, '🕐 Ежечасный отчет о бизнесе', false);
         }
       }
     }
   }
 
-  private async sendNotification(chatId: number, business: Business, header: string) {
+  private async sendNotification(
+    chatId: number, 
+    business: Business, 
+    header: string,
+    isLowProductsAlert: boolean
+  ) {
     try {
-      const message = `${header}\n\n${this.businessService.formatBusiness(business)}`;
+      let message = `${header}\n\n${this.businessService.formatBusiness(business)}`;
+      
+      if (isLowProductsAlert) {
+        message += '\n❗️<b>Внимание! В бизнесе меньше 2000 продуктов. Необходимо их завести!</b>';
+      }
+      
       await this.bot.telegram.sendMessage(chatId, message, { parse_mode: 'HTML' });
     } catch (error) {
       this.logger.error(`Ошибка отправки уведомления в чат ${chatId}`, error);

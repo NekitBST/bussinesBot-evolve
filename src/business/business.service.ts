@@ -247,10 +247,10 @@ export class BusinessService {
     return (
       `🏢 <b>Название:</b> ${business.name}\n` +
       `${statusEmoji} <b>Статус:</b> ${business.status}\n` +
-      `🎮 <b>Контроль:</b> ${business.controller}\n` +
+      `💀 <b>Контроль:</b> ${business.controller}\n` +
       `👤 <b>Владелец:</b> ${business.owner}\n` +
       `📦 <b>Продукты:</b> ${business.products}\n` +
-      `💰 <b>Цена:</b> ${business.price}\n`
+      `💰 <b>Цены:</b> ${business.price}\n`
     );
   }
 
