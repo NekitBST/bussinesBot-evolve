@@ -18,11 +18,27 @@ export interface Business {
 export class BusinessService {
   private readonly logger = new Logger(BusinessService.name);
   private cachedCookies: string | null = null;
+  
+  private cachedBusinesses: Business[] | null = null;
+  private lastUpdateHour: number | null = null;
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
+
+  private getCurrentHour(): number {
+    return new Date().getHours();
+  }
+
+  private isCacheValid(): boolean {
+    if (!this.cachedBusinesses || this.lastUpdateHour === null) {
+      return false;
+    }
+    
+    const currentHour = this.getCurrentHour();
+    return this.lastUpdateHour === currentHour;
+  }
 
   private decryptR3ACTLB(a: string, b: string, c: string): string {
     const key = Buffer.from(a, 'hex');
@@ -77,6 +93,14 @@ export class BusinessService {
   }
 
   async getBusinesses(): Promise<Business[]> {
+    if (this.isCacheValid()) {
+      this.logger.log(`📦 Используем кэш данных (час: ${this.lastUpdateHour}:00)`);
+      return this.cachedBusinesses!;
+    }
+
+    const currentHour = this.getCurrentHour();
+    this.logger.log(`🔄 Обновление данных (новый час: ${currentHour}:00)`);
+
     try {
       let cookies = this.getCookies();
 
@@ -127,7 +151,7 @@ export class BusinessService {
         if (r3actlb) {
           cookies = this.updateR3ACTLBCookie(cookies, r3actlb);
           this.cachedCookies = cookies;
-
+          
           this.logger.log('✅ R3ACTLB получен и сохранен в кэш');
 
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -164,8 +188,11 @@ export class BusinessService {
             retryResponse.data.success &&
             retryResponse.data.content
           ) {
+            this.cachedBusinesses = retryResponse.data.content;
+            this.lastUpdateHour = currentHour;
+            
             this.logger.log(
-              `✅ Получено бизнесов: ${retryResponse.data.content.length}`,
+              `✅ Получено бизнесов: ${retryResponse.data.content.length} (кэш обновлен)`
             );
             return retryResponse.data.content;
           }
@@ -180,8 +207,11 @@ export class BusinessService {
         response.data.success &&
         response.data.content
       ) {
+        this.cachedBusinesses = response.data.content;
+        this.lastUpdateHour = currentHour;
+        
         this.logger.log(
-          `✅ Получено бизнесов: ${response.data.content.length}`,
+          `✅ Получено бизнесов: ${response.data.content.length} (кэш обновлен)`
         );
         return response.data.content;
       }
@@ -191,12 +221,17 @@ export class BusinessService {
     } catch (error) {
       this.logger.error('Ошибка при получении списка бизнесов');
       this.logger.error(`Детали ошибки: ${error.message}`);
-
+      
       if (error.response && [401, 403].includes(error.response.status)) {
         this.cachedCookies = null;
         this.logger.warn('🔄 Кэш кук сброшен');
       }
-
+      
+      if (this.cachedBusinesses) {
+        this.logger.warn('⚠️ Используем старый кэш из-за ошибки');
+        return this.cachedBusinesses;
+      }
+      
       return [];
     }
   }
@@ -212,10 +247,10 @@ export class BusinessService {
     return (
       `🏢 <b>Название:</b> ${business.name}\n` +
       `${statusEmoji} <b>Статус:</b> ${business.status}\n` +
-      `💀 <b>Контроль:</b> ${business.controller}\n` +
+      `🎮 <b>Контроль:</b> ${business.controller}\n` +
       `👤 <b>Владелец:</b> ${business.owner}\n` +
       `📦 <b>Продукты:</b> ${business.products}\n` +
-      `💰 <b>Цены:</b> ${business.price}\n`
+      `💰 <b>Цена:</b> ${business.price}\n`
     );
   }
 
