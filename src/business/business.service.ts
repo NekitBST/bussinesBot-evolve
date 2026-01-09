@@ -125,10 +125,9 @@ export class BusinessService {
 
         const r3actlb = this.extractR3ACTLBFromHtml(response.data);
         if (r3actlb) {
-
           cookies = this.updateR3ACTLBCookie(cookies, r3actlb);
           this.cachedCookies = cookies;
-          
+
           this.logger.log('✅ R3ACTLB получен и сохранен в кэш');
 
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -192,12 +191,12 @@ export class BusinessService {
     } catch (error) {
       this.logger.error('Ошибка при получении списка бизнесов');
       this.logger.error(`Детали ошибки: ${error.message}`);
-      
+
       if (error.response && [401, 403].includes(error.response.status)) {
         this.cachedCookies = null;
         this.logger.warn('🔄 Кэш кук сброшен');
       }
-      
+
       return [];
     }
   }
@@ -213,10 +212,10 @@ export class BusinessService {
     return (
       `🏢 <b>Название:</b> ${business.name}\n` +
       `${statusEmoji} <b>Статус:</b> ${business.status}\n` +
-      `🎮 <b>Контроль:</b> ${business.controller}\n` +
+      `💀 <b>Контроль:</b> ${business.controller}\n` +
       `👤 <b>Владелец:</b> ${business.owner}\n` +
       `📦 <b>Продукты:</b> ${business.products}\n` +
-      `💰 <b>Цена:</b> ${business.price}\n`
+      `💰 <b>Цены:</b> ${business.price}\n`
     );
   }
 
