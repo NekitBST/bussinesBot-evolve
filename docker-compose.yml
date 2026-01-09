@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  business-bot:
+    build: .
+    container_name: evolve-business-bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - EVOLVE_COOKIES=${EVOLVE_COOKIES}
+      - NODE_ENV=production
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge
