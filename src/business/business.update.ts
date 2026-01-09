@@ -93,15 +93,36 @@ export class BusinessUpdate {
       message += '\n';
     }
 
-    const buttons = subscriptions.map(sub => 
-      [Markup.button.callback(`🗑 Удалить: ${sub.businessName}`, `unsub_${sub.businessName}`)]
-    );
+    const buttons = subscriptions.map(sub => [
+      Markup.button.callback(`📊 ${sub.businessName}`, `show_${sub.businessName}`),
+      Markup.button.callback(`🗑`, `unsub_${sub.businessName}`)
+    ]);
     buttons.push([Markup.button.callback('🔙 Главное меню', 'back_to_menu')]);
 
     await ctx.reply(message, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard(buttons),
     });
+  }
+
+  @Action(/^show_(.+)$/)
+  async showBusiness(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery();
+    const match = (ctx as any).match;
+    const businessName = match[1];
+    
+    await ctx.reply('⏳ Загружаю информацию...');
+    
+    const businesses = await this.businessService.getBusinesses();
+    const business = businesses.find(b => b.name === businessName);
+    
+    if (!business) {
+      await ctx.reply(`❌ Бизнес "${businessName}" не найден.`);
+      return;
+    }
+    
+    const formatted = this.businessService.formatBusiness(business);
+    await ctx.reply(formatted, { parse_mode: 'HTML' });
   }
 
   @Action(/^unsub_(.+)$/)
