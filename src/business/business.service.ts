@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { Cron } from '@nestjs/schedule';
 import * as crypto from 'crypto';
 
 export interface Business {
@@ -18,26 +19,36 @@ export interface Business {
 export class BusinessService {
   private readonly logger = new Logger(BusinessService.name);
   private cachedCookies: string | null = null;
-  
+
   private cachedBusinesses: Business[] | null = null;
-  private lastUpdateHour: number | null = null;
+  private lastUpdateInterval: string | null = null;
 
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
 
-  private getCurrentHour(): number {
-    return new Date().getHours();
+  private getCurrentInterval(): string {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes();
+    const halfHour = minutes < 31 ? '01' : '31';
+    return `${hours}:${halfHour}`;
   }
 
   private isCacheValid(): boolean {
-    if (!this.cachedBusinesses || this.lastUpdateHour === null) {
+    if (!this.cachedBusinesses || this.lastUpdateInterval === null) {
       return false;
     }
-    
-    const currentHour = this.getCurrentHour();
-    return this.lastUpdateHour === currentHour;
+
+    const currentInterval = this.getCurrentInterval();
+    return this.lastUpdateInterval === currentInterval;
+  }
+
+  @Cron('1,31 * * * *')
+  async refreshCache() {
+    this.logger.log('⏰ Автоматическое обновление кэша...');
+    await this.getBusinesses();
   }
 
   private decryptR3ACTLB(a: string, b: string, c: string): string {
@@ -94,12 +105,16 @@ export class BusinessService {
 
   async getBusinesses(): Promise<Business[]> {
     if (this.isCacheValid()) {
-      this.logger.log(`📦 Используем кэш данных (час: ${this.lastUpdateHour}:00)`);
+      this.logger.log(
+        `📦 Используем кэш данных (интервал: ${this.lastUpdateInterval})`,
+      );
       return this.cachedBusinesses!;
     }
 
-    const currentHour = this.getCurrentHour();
-    this.logger.log(`🔄 Обновление данных (новый час: ${currentHour}:00)`);
+    const currentInterval = this.getCurrentInterval();
+    this.logger.log(
+      `🔄 Обновление данных (новый интервал: ${currentInterval})`,
+    );
 
     try {
       let cookies = this.getCookies();
@@ -151,7 +166,7 @@ export class BusinessService {
         if (r3actlb) {
           cookies = this.updateR3ACTLBCookie(cookies, r3actlb);
           this.cachedCookies = cookies;
-          
+
           this.logger.log('✅ R3ACTLB получен и сохранен в кэш');
 
           await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -189,10 +204,10 @@ export class BusinessService {
             retryResponse.data.content
           ) {
             this.cachedBusinesses = retryResponse.data.content;
-            this.lastUpdateHour = currentHour;
-            
+            this.lastUpdateInterval = currentInterval;
+
             this.logger.log(
-              `✅ Получено бизнесов: ${retryResponse.data.content.length} (кэш обновлен)`
+              `✅ Получено бизнесов: ${retryResponse.data.content.length} (кэш обновлен)`,
             );
             return retryResponse.data.content;
           }
@@ -208,10 +223,10 @@ export class BusinessService {
         response.data.content
       ) {
         this.cachedBusinesses = response.data.content;
-        this.lastUpdateHour = currentHour;
-        
+        this.lastUpdateInterval = currentInterval;
+
         this.logger.log(
-          `✅ Получено бизнесов: ${response.data.content.length} (кэш обновлен)`
+          `✅ Получено бизнесов: ${response.data.content.length} (кэш обновлен)`,
         );
         return response.data.content;
       }
@@ -221,17 +236,17 @@ export class BusinessService {
     } catch (error) {
       this.logger.error('Ошибка при получении списка бизнесов');
       this.logger.error(`Детали ошибки: ${error.message}`);
-      
+
       if (error.response && [401, 403].includes(error.response.status)) {
         this.cachedCookies = null;
         this.logger.warn('🔄 Кэш кук сброшен');
       }
-      
+
       if (this.cachedBusinesses) {
         this.logger.warn('⚠️ Используем старый кэш из-за ошибки');
         return this.cachedBusinesses;
       }
-      
+
       return [];
     }
   }
