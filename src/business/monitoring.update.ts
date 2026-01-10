@@ -37,4 +37,33 @@ export class MonitoringUpdate {
       ]),
     );
   }
+
+  @Action('view_sto')
+  async viewSTO(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery();
+    await ctx.reply('⏳ Загружаю список СТО...');
+
+    const sto = await this.monitoringService.getSTO();
+
+    if (!sto || sto.length === 0) {
+      await ctx.reply('❌ Не удалось получить список СТО.');
+      return;
+    }
+
+    await ctx.reply(`📊 Найдено СТО: ${sto.length}\n\n`);
+
+    let message = '';
+    for (const s of sto) {
+      message += this.monitoringService.formatSTO(s) + '\n';
+    }
+
+    await ctx.reply(message.trim(), { parse_mode: 'HTML' });
+
+    await ctx.reply(
+      'Список загружен ✅',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Назад к мониторингу', 'monitoring_menu')],
+      ]),
+    );
+  }
 }

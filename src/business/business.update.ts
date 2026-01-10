@@ -272,6 +272,7 @@ export class BusinessUpdate {
       ...Markup.inlineKeyboard([
         [Markup.button.callback('🏢 Бизнесы', 'list_all')],
         [Markup.button.callback('🌾 Фермы', 'view_farms')],
+        [Markup.button.callback('🔧 СТО', 'view_sto')],
         [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
       ]),
     });

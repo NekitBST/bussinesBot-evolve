@@ -14,6 +14,15 @@ export interface Farm {
   fermers: string;
 }
 
+export interface STO {
+  number: string;
+  status: string;
+  statusType: string;
+  owner: string;
+  vice: string;
+  fermers: string;
+}
+
 @Injectable()
 export class MonitoringService {
   private readonly logger = new Logger(MonitoringService.name);
@@ -21,6 +30,9 @@ export class MonitoringService {
 
   private cachedFarms: Farm[] | null = null;
   private lastFarmsUpdateHour: number | null = null;
+
+  private cachedSTO: STO[] | null = null;
+  private lastSTOUpdateHour: number | null = null;
 
   constructor(
     private readonly httpService: HttpService,
@@ -39,10 +51,19 @@ export class MonitoringService {
     return this.lastFarmsUpdateHour === currentHour;
   }
 
+  private isSTOCacheValid(): boolean {
+    if (!this.cachedSTO || this.lastSTOUpdateHour === null) {
+      return false;
+    }
+    const currentHour = this.getCurrentHour();
+    return this.lastSTOUpdateHour === currentHour;
+  }
+
   @Cron('2 * * * *')
   async refreshAllCache() {
     this.logger.log('⏰ Автоматическое обновление кэша мониторинга...');
     await this.getFarms();
+    await this.getSTO();
   }
 
   private decryptR3ACTLB(a: string, b: string, c: string): string {
@@ -235,6 +256,42 @@ export class MonitoringService {
     }
   }
 
+  async getSTO(): Promise<STO[]> {
+    if (this.isSTOCacheValid()) {
+      this.logger.log(
+        `📦 Используем кэш СТО (час: ${this.lastSTOUpdateHour}:00)`,
+      );
+      return this.cachedSTO!;
+    }
+
+    const currentHour = this.getCurrentHour();
+    this.logger.log(`🔄 Обновление данных СТО (новый час: ${currentHour}:00)`);
+
+    try {
+      const sto = await this.fetchMonitoring<STO>('sto');
+      this.cachedSTO = sto;
+      this.lastSTOUpdateHour = currentHour;
+
+      this.logger.log(`✅ Получено СТО: ${sto.length} (кэш обновлен)`);
+      return sto;
+    } catch (error) {
+      this.logger.error('Ошибка при получении списка СТО');
+      this.logger.error(`Детали ошибки: ${error.message}`);
+
+      if (error.response && [401, 403].includes(error.response.status)) {
+        this.cachedCookies = null;
+        this.logger.warn('🔄 Кэш кук сброшен');
+      }
+
+      if (this.cachedSTO) {
+        this.logger.warn('⚠️ Используем старый кэш СТО из-за ошибки');
+        return this.cachedSTO;
+      }
+
+      return [];
+    }
+  }
+
   formatFarm(farm: Farm): string {
     const statusEmoji =
       farm.status === 'Активен'
@@ -261,6 +318,35 @@ export class MonitoringService {
       `👤 <b>Владелец:</b> ${farm.owner}\n` +
       `👥 <b>Заместители:</b>\n${vice || '  Нет'}\n` +
       `🧑‍🌾 <b>Фермеры:</b>\n${fermers || '  Нет'}\n`
+    );
+  }
+
+  formatSTO(sto: STO): string {
+    const statusEmoji =
+      sto.status === 'Активен'
+        ? '🟢'
+        : sto.status === 'На аукционе'
+          ? '🔴'
+          : '⚪';
+
+    const vice = sto.vice
+      .split('<br/>')
+      .filter((v) => v !== 'None')
+      .map((v) => `  • ${v}`)
+      .join('\n');
+
+    const mechanics = sto.fermers
+      .split('<br/>')
+      .filter((m) => m !== 'None')
+      .map((m) => `  • ${m}`)
+      .join('\n');
+
+    return (
+      `🔧 <b>Название:</b> ${sto.number}\n` +
+      `${statusEmoji} <b>Статус:</b> ${sto.status}\n` +
+      `👤 <b>Владелец:</b> ${sto.owner}\n` +
+      `👥 <b>Заместители:</b>\n${vice || '  Нет'}\n` +
+      `👨‍🔧 <b>Механики:</b>\n${mechanics || '  Нет'}\n`
     );
   }
 }
