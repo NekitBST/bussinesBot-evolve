@@ -7,7 +7,8 @@ import { Logger } from '@nestjs/common';
 @Update()
 export class BusinessUpdate {
   private readonly logger = new Logger(BusinessUpdate.name);
-  private userState: Map<number, { action?: string; businessName?: string }> = new Map();
+  private userState: Map<number, { action?: string; businessName?: string }> =
+    new Map();
 
   constructor(
     private readonly businessService: BusinessService,
@@ -17,13 +18,17 @@ export class BusinessUpdate {
   @Start()
   async start(@Ctx() ctx: Context) {
     await ctx.reply(
-      '👋 Добро пожаловать в бот мониторинга бизнесов Evolve RP!\n\n' +
-      'Выберите действие:',
+      '👋 Добро пожаловать в бот мониторинга Evolve RP!\n\n' +
+        'Выберите действие:',
       Markup.inlineKeyboard([
-        [Markup.button.callback('📋 Список всех бизнесов', 'list_all')],
-        [Markup.button.callback('🔔 Настроить уведомления', 'setup_notifications')],
-        [Markup.button.callback('📊 Мои подписки', 'my_subscriptions')],
-      ])
+        [Markup.button.callback('📊 Мониторинг', 'monitoring_menu')],
+        [
+          Markup.button.callback(
+            '🔔 Уведомления о мониторинге',
+            'business_notifications_menu',
+          ),
+        ],
+      ]),
     );
   }
 
@@ -38,26 +43,28 @@ export class BusinessUpdate {
     await ctx.reply('⏳ Загружаю список бизнесов...');
 
     const businesses = await this.businessService.getBusinesses();
-    
+
     if (!businesses || businesses.length === 0) {
-      await ctx.reply('❌ Не удалось получить список бизнесов. Проверьте настройки.');
+      await ctx.reply(
+        '❌ Не удалось получить список бизнесов. Проверьте настройки.',
+      );
       return;
     }
 
     const messages = this.businessService.splitBusinessesToMessages(businesses);
-    
+
     await ctx.reply(`📊 Найдено бизнесов: ${businesses.length}\n\n`);
-    
+
     for (const message of messages) {
       await ctx.reply(message, { parse_mode: 'HTML' });
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     await ctx.reply(
       'Список загружен ✅',
       Markup.inlineKeyboard([
         [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
-      ])
+      ]),
     );
   }
 
@@ -73,7 +80,9 @@ export class BusinessUpdate {
   async mySubscriptions(@Ctx() ctx: Context) {
     if (!ctx.from) return;
     await ctx.answerCbQuery();
-    const subscriptions = this.notificationService.getUserSubscriptions(ctx.from.id);
+    const subscriptions = this.notificationService.getUserSubscriptions(
+      ctx.from.id,
+    );
 
     if (subscriptions.length === 0) {
       await ctx.reply('У вас нет активных подписок на уведомления.');
@@ -81,7 +90,7 @@ export class BusinessUpdate {
     }
 
     let message = '📋 <b>Ваши подписки:</b>\n\n';
-    
+
     for (const sub of subscriptions) {
       message += `🏢 <b>${sub.businessName}</b>\n`;
       if (sub.hourlyNotification) {
@@ -93,9 +102,12 @@ export class BusinessUpdate {
       message += '\n';
     }
 
-    const buttons = subscriptions.map(sub => [
-      Markup.button.callback(`📊 ${sub.businessName}`, `show_${sub.businessName}`),
-      Markup.button.callback(`🗑`, `unsub_${sub.businessName}`)
+    const buttons = subscriptions.map((sub) => [
+      Markup.button.callback(
+        `📊 ${sub.businessName}`,
+        `show_${sub.businessName}`,
+      ),
+      Markup.button.callback(`🗑`, `unsub_${sub.businessName}`),
     ]);
     buttons.push([Markup.button.callback('🔙 Главное меню', 'back_to_menu')]);
 
@@ -110,17 +122,17 @@ export class BusinessUpdate {
     await ctx.answerCbQuery();
     const match = (ctx as any).match;
     const businessName = match[1];
-    
+
     await ctx.reply('⏳ Загружаю информацию...');
-    
+
     const businesses = await this.businessService.getBusinesses();
-    const business = businesses.find(b => b.name === businessName);
-    
+    const business = businesses.find((b) => b.name === businessName);
+
     if (!business) {
       await ctx.reply(`❌ Бизнес "${businessName}" не найден.`);
       return;
     }
-    
+
     const formatted = this.businessService.formatBusiness(business);
     await ctx.reply(formatted, { parse_mode: 'HTML' });
   }
@@ -131,7 +143,7 @@ export class BusinessUpdate {
     await ctx.answerCbQuery();
     const match = (ctx as any).match;
     const businessName = match[1];
-    
+
     this.notificationService.removeSubscription(ctx.from.id, businessName);
     await ctx.reply(`✅ Подписка на "${businessName}" удалена.`);
     await this.mySubscriptions(ctx);
@@ -156,37 +168,42 @@ export class BusinessUpdate {
 
     if (state.action === 'waiting_business_name') {
       const businessName = ctx.message.text;
-      
+
       const businesses = await this.businessService.getBusinesses();
-      const business = businesses.find(b => 
-        b.name.toLowerCase() === businessName.toLowerCase()
+      const business = businesses.find(
+        (b) => b.name.toLowerCase() === businessName.toLowerCase(),
       );
 
       if (!business) {
         await ctx.reply(
           `❌ Бизнес "${businessName}" не найден.\n\n` +
-          'Проверьте название или используйте команду "Список всех бизнесов" для просмотра доступных вариантов.'
+            'Проверьте название или используйте команду "Список всех бизнесов" для просмотра доступных вариантов.',
         );
         return;
       }
 
-      this.userState.set(userId, { 
+      this.userState.set(userId, {
         action: 'choose_notification_type',
         businessName: business.name,
       });
 
       await ctx.reply(
         `Выбран бизнес: <b>${business.name}</b>\n\n` +
-        'Выберите тип уведомлений:',
+          'Выберите тип уведомлений:',
         {
           parse_mode: 'HTML',
           ...Markup.inlineKeyboard([
             [Markup.button.callback('🕐 Ежечасно (в :05)', 'notif_hourly')],
-            [Markup.button.callback('⚠️ При products < 2000', 'notif_low_products')],
+            [
+              Markup.button.callback(
+                '⚠️ При products < 2000',
+                'notif_low_products',
+              ),
+            ],
             [Markup.button.callback('✅ Оба типа', 'notif_both')],
             [Markup.button.callback('❌ Отмена', 'back_to_menu')],
           ]),
-        }
+        },
       );
     }
   }
@@ -229,7 +246,7 @@ export class BusinessUpdate {
     );
 
     let message = `✅ Уведомления настроены для бизнеса: <b>${state.businessName}</b>\n\n`;
-    
+
     if (hourly) {
       message += '🕐 Ежечасные уведомления: включены\n';
     }
@@ -242,6 +259,37 @@ export class BusinessUpdate {
     await ctx.reply(message, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
+      ]),
+    });
+  }
+
+  @Action('monitoring_menu')
+  async monitoringMenu(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery();
+    await ctx.reply('📊 <b>Мониторинг</b>\n\n' + 'Выберите категорию:', {
+      parse_mode: 'HTML',
+      ...Markup.inlineKeyboard([
+        [Markup.button.callback('🏢 Бизнесы', 'list_all')],
+        [Markup.button.callback('🌾 Фермы', 'view_farms')],
+        [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
+      ]),
+    });
+  }
+
+  @Action('business_notifications_menu')
+  async businessNotificationsMenu(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery();
+    await ctx.reply('🔔 <b>Уведомления о мониторинге</b>', {
+      parse_mode: 'HTML',
+      ...Markup.inlineKeyboard([
+        [
+          Markup.button.callback(
+            '🏢 Настроить для бизнеса',
+            'setup_notifications',
+          ),
+        ],
+        [Markup.button.callback('📊 Мои подписки', 'my_subscriptions')],
         [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
       ]),
     });
