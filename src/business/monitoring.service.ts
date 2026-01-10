@@ -31,6 +31,14 @@ export interface Realtor {
   products: string;
 }
 
+export interface Carmarket {
+  number: string;
+  owner: string;
+  vice: string;
+  perhour: string;
+  outprice: string;
+}
+
 @Injectable()
 export class MonitoringService {
   private readonly logger = new Logger(MonitoringService.name);
@@ -44,6 +52,9 @@ export class MonitoringService {
 
   private cachedRealtor: Realtor[] | null = null;
   private lastRealtorUpdateHour: number | null = null;
+
+  private cachedCarmarket: Carmarket[] | null = null;
+  private lastCarmarketUpdateHour: number | null = null;
 
   constructor(
     private readonly httpService: HttpService,
@@ -78,12 +89,21 @@ export class MonitoringService {
     return this.lastRealtorUpdateHour === currentHour;
   }
 
+  private isCarmarketCacheValid(): boolean {
+    if (!this.cachedCarmarket || this.lastCarmarketUpdateHour === null) {
+      return false;
+    }
+    const currentHour = this.getCurrentHour();
+    return this.lastCarmarketUpdateHour === currentHour;
+  }
+
   @Cron('2 * * * *')
   async refreshAllCache() {
     this.logger.log('⏰ Автоматическое обновление кэша мониторинга...');
     await this.getFarms();
     await this.getSTO();
     await this.getRealtor();
+    await this.getCarmarket();
   }
 
   private decryptR3ACTLB(a: string, b: string, c: string): string {
@@ -350,6 +370,46 @@ export class MonitoringService {
     }
   }
 
+  async getCarmarket(): Promise<Carmarket[]> {
+    if (this.isCarmarketCacheValid()) {
+      this.logger.log(
+        `📦 Используем кэш авторынка (час: ${this.lastCarmarketUpdateHour}:00)`,
+      );
+      return this.cachedCarmarket!;
+    }
+
+    const currentHour = this.getCurrentHour();
+    this.logger.log(
+      `🔄 Обновление данных авторынка (новый час: ${currentHour}:00)`,
+    );
+
+    try {
+      const carmarket = await this.fetchMonitoring<Carmarket>('carmarket');
+      this.cachedCarmarket = carmarket;
+      this.lastCarmarketUpdateHour = currentHour;
+
+      this.logger.log(
+        `✅ Получено авторынков: ${carmarket.length} (кэш обновлен)`,
+      );
+      return carmarket;
+    } catch (error) {
+      this.logger.error('Ошибка при получении данных авторынка');
+      this.logger.error(`Детали ошибки: ${error.message}`);
+
+      if (error.response && [401, 403].includes(error.response.status)) {
+        this.cachedCookies = null;
+        this.logger.warn('🔄 Кэш кук сброшен');
+      }
+
+      if (this.cachedCarmarket) {
+        this.logger.warn('⚠️ Используем старый кэш авторынка из-за ошибки');
+        return this.cachedCarmarket;
+      }
+
+      return [];
+    }
+  }
+
   formatFarm(farm: Farm): string {
     const statusEmoji =
       farm.status === 'Активен'
@@ -421,6 +481,22 @@ export class MonitoringService {
       `${statusEmoji} <b>Статус:</b> ${realtor.status}\n` +
       `👤 <b>Владелец:</b> ${realtor.owner}\n` +
       `📦 <b>Продукты:</b> ${realtor.products}\n`
+    );
+  }
+
+  formatCarmarket(carmarket: Carmarket): string {
+    const vice = carmarket.vice
+      .split('<br/>')
+      .filter((v) => v !== 'None')
+      .map((v) => `  • ${v}`)
+      .join('\n');
+
+    return (
+      `🚘 <b>Название:</b> Авторынок\n` +
+      `👤 <b>Владелец:</b> ${carmarket.owner}\n` +
+      `👥 <b>Заместители:</b>\n${vice || '  Нет'}\n` +
+      `💰 <b>Цена аренды в час:</b> ${carmarket.perhour}\n` +
+      `💸 <b>Цена за выезд:</b> ${carmarket.outprice}\n`
     );
   }
 }

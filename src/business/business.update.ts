@@ -274,6 +274,7 @@ export class BusinessUpdate {
         [Markup.button.callback('🌾 Фермы', 'view_farms')],
         [Markup.button.callback('🔧 СТО', 'view_sto')],
         [Markup.button.callback('🏠 Риелторки', 'view_realtor')],
+        [Markup.button.callback('🚘 Авторынок', 'view_carmarket')],
         [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
       ]),
     });

@@ -95,4 +95,27 @@ export class MonitoringUpdate {
       ]),
     );
   }
+
+  @Action('view_carmarket')
+  async viewCarmarket(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery();
+    await ctx.reply('⏳ Загружаю информацию об авторынке...');
+
+    const carmarket = await this.monitoringService.getCarmarket();
+
+    if (!carmarket || carmarket.length === 0) {
+      await ctx.reply('❌ Не удалось получить информацию об авторынке.');
+      return;
+    }
+
+    const formatted = this.monitoringService.formatCarmarket(carmarket[0]);
+    await ctx.reply(formatted, { parse_mode: 'HTML' });
+
+    await ctx.reply(
+      'Список загружен ✅',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Назад к мониторингу', 'monitoring_menu')],
+      ]),
+    );
+  }
 }
