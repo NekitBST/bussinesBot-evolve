@@ -66,4 +66,33 @@ export class MonitoringUpdate {
       ]),
     );
   }
+
+  @Action('view_realtor')
+  async viewRealtor(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery();
+    await ctx.reply('⏳ Загружаю список риелторок...');
+
+    const realtor = await this.monitoringService.getRealtor();
+
+    if (!realtor || realtor.length === 0) {
+      await ctx.reply('❌ Не удалось получить список риелторок.');
+      return;
+    }
+
+    await ctx.reply(`📊 Найдено риелторок: ${realtor.length}\n\n`);
+
+    let message = '';
+    for (const r of realtor) {
+      message += this.monitoringService.formatRealtor(r) + '\n';
+    }
+
+    await ctx.reply(message.trim(), { parse_mode: 'HTML' });
+
+    await ctx.reply(
+      'Список загружен ✅',
+      Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Назад к мониторингу', 'monitoring_menu')],
+      ]),
+    );
+  }
 }

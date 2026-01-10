@@ -23,6 +23,14 @@ export interface STO {
   fermers: string;
 }
 
+export interface Realtor {
+  name: string;
+  status: string;
+  statusType: string;
+  owner: string;
+  products: string;
+}
+
 @Injectable()
 export class MonitoringService {
   private readonly logger = new Logger(MonitoringService.name);
@@ -33,6 +41,9 @@ export class MonitoringService {
 
   private cachedSTO: STO[] | null = null;
   private lastSTOUpdateHour: number | null = null;
+
+  private cachedRealtor: Realtor[] | null = null;
+  private lastRealtorUpdateHour: number | null = null;
 
   constructor(
     private readonly httpService: HttpService,
@@ -59,11 +70,20 @@ export class MonitoringService {
     return this.lastSTOUpdateHour === currentHour;
   }
 
+  private isRealtorCacheValid(): boolean {
+    if (!this.cachedRealtor || this.lastRealtorUpdateHour === null) {
+      return false;
+    }
+    const currentHour = this.getCurrentHour();
+    return this.lastRealtorUpdateHour === currentHour;
+  }
+
   @Cron('2 * * * *')
   async refreshAllCache() {
     this.logger.log('⏰ Автоматическое обновление кэша мониторинга...');
     await this.getFarms();
     await this.getSTO();
+    await this.getRealtor();
   }
 
   private decryptR3ACTLB(a: string, b: string, c: string): string {
@@ -292,6 +312,44 @@ export class MonitoringService {
     }
   }
 
+  async getRealtor(): Promise<Realtor[]> {
+    if (this.isRealtorCacheValid()) {
+      this.logger.log(
+        `📦 Используем кэш риелторок (час: ${this.lastRealtorUpdateHour}:00)`,
+      );
+      return this.cachedRealtor!;
+    }
+
+    const currentHour = this.getCurrentHour();
+    this.logger.log(
+      `🔄 Обновление данных риелторок (новый час: ${currentHour}:00)`,
+    );
+
+    try {
+      const realtor = await this.fetchMonitoring<Realtor>('realtor');
+      this.cachedRealtor = realtor;
+      this.lastRealtorUpdateHour = currentHour;
+
+      this.logger.log(`✅ Получено риелторок: ${realtor.length} (кэш обновлен)`);
+      return realtor;
+    } catch (error) {
+      this.logger.error('Ошибка при получении списка риелторок');
+      this.logger.error(`Детали ошибки: ${error.message}`);
+
+      if (error.response && [401, 403].includes(error.response.status)) {
+        this.cachedCookies = null;
+        this.logger.warn('🔄 Кэш кук сброшен');
+      }
+
+      if (this.cachedRealtor) {
+        this.logger.warn('⚠️ Используем старый кэш риелторок из-за ошибки');
+        return this.cachedRealtor;
+      }
+
+      return [];
+    }
+  }
+
   formatFarm(farm: Farm): string {
     const statusEmoji =
       farm.status === 'Активен'
@@ -347,6 +405,22 @@ export class MonitoringService {
       `👤 <b>Владелец:</b> ${sto.owner}\n` +
       `👥 <b>Заместители:</b>\n${vice || '  Нет'}\n` +
       `👨‍🔧 <b>Механики:</b>\n${mechanics || '  Нет'}\n`
+    );
+  }
+
+  formatRealtor(realtor: Realtor): string {
+    const statusEmoji =
+      realtor.status === 'Активен'
+        ? '🟢'
+        : realtor.status === 'На аукционе'
+          ? '🔴'
+          : '⚪';
+
+    return (
+      `🏠 <b>Название:</b> ${realtor.name}\n` +
+      `${statusEmoji} <b>Статус:</b> ${realtor.status}\n` +
+      `👤 <b>Владелец:</b> ${realtor.owner}\n` +
+      `📦 <b>Продукты:</b> ${realtor.products}\n`
     );
   }
 }
