@@ -18,8 +18,16 @@ export class BusinessUpdate {
   @Start()
   async start(@Ctx() ctx: Context) {
     await ctx.reply(
-      '👋 Добро пожаловать в бот мониторинга бизнесов Evolve RP!\n\n' +
-        'Выберите действие:',
+      '👋 Добро пожаловать в бот мониторинга бизнесов Evolve RP!',
+      Markup.keyboard([[Markup.button.text('⭐ Меню')]]).resize(),
+    );
+    
+    await this.showMenu(ctx);
+  }
+
+  private async showMenu(@Ctx() ctx: Context) {
+    await ctx.reply(
+      'Выберите действие из списка:',
       Markup.inlineKeyboard([
         [Markup.button.callback('📊 Мониторинг', 'monitoring_menu')],
         [
@@ -35,7 +43,7 @@ export class BusinessUpdate {
 
   @Command('menu')
   async menu(@Ctx() ctx: Context) {
-    await this.start(ctx);
+    await this.showMenu(ctx);
   }
 
   @Action('list_all')
@@ -153,7 +161,7 @@ export class BusinessUpdate {
   @Action('back_to_menu')
   async backToMenu(@Ctx() ctx: Context) {
     await ctx.answerCbQuery();
-    await this.start(ctx);
+    await this.showMenu(ctx);
   }
 
   @On('text')
@@ -161,9 +169,15 @@ export class BusinessUpdate {
     if (!ctx.from) return;
     const userId = ctx.from.id;
     const state = this.userState.get(userId);
+    const text = ctx.message.text;
+
+    if (text === 'Меню' || text === 'меню' || text === 'menu' || text === 'Menu') {
+      await this.showMenu(ctx);
+      return;
+    }
 
     if (!state) {
-      await ctx.reply('Используйте /menu для отображения главного меню');
+      await ctx.reply('Используйте /menu или кнопку "⭐ Меню" для отображения главного меню');
       return;
     }
 

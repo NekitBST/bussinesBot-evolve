@@ -496,7 +496,7 @@ export class MonitoringService {
       `👤 <b>Владелец:</b> ${carmarket.owner}\n` +
       `👥 <b>Заместители:</b>\n${vice || '  Нет'}\n` +
       `💰 <b>Цена аренды в час:</b> ${carmarket.perhour}\n` +
-      `💸 <b>Цена за выезд:</b> ${carmarket.outprice}\n`
+      `🚦 <b>Цена за выезд:</b> ${carmarket.outprice}\n`
     );
   }
 }
