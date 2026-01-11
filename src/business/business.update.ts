@@ -28,6 +28,7 @@ export class BusinessUpdate {
             'business_notifications_menu',
           ),
         ],
+        [Markup.button.callback('🚨 Уведомления об аукционах', 'auction_menu')],
       ]),
     );
   }

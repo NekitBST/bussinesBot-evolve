@@ -5,6 +5,8 @@ import { BusinessUpdate } from './business.update';
 import { NotificationService } from './notification.service';
 import { MonitoringService } from './monitoring.service';
 import { MonitoringUpdate } from './monitoring.update';
+import { AuctionNotificationService } from './auction-notification.service';
+import { AuctionUpdate } from './auction.update';
 
 @Module({
   imports: [HttpModule],
@@ -14,6 +16,8 @@ import { MonitoringUpdate } from './monitoring.update';
     NotificationService,
     MonitoringService,
     MonitoringUpdate,
+    AuctionNotificationService,
+    AuctionUpdate,
   ],
 })
 export class BusinessModule {}
