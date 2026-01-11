@@ -30,7 +30,7 @@ export class AuctionUpdate {
           [Markup.button.callback('🔧 Только СТО', 'auction_only_sto')],
           [Markup.button.callback('🏠 Только риелторки', 'auction_only_realtor')],
           [Markup.button.callback('🚘 Только авторынок', 'auction_only_carmarket')],
-          [Markup.button.callback('📋 Мои настройки', 'auction_my_settings')],
+          [Markup.button.callback('📋 Мои подписки', 'auction_my_settings')],
           [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
         ]),
       },
@@ -306,14 +306,14 @@ export class AuctionUpdate {
       .join('\n');
 
     await ctx.reply(
-      `📋 <b>Ваши настройки аукционов:</b>\n\n` +
+      `📋 <b>Ваши подписки на аукционы:</b>\n\n` +
         `<b>Отслеживаемые категории:</b>\n${selectedNames}`,
       {
         parse_mode: 'HTML',
         ...Markup.inlineKeyboard([
           [
             Markup.button.callback(
-              '🗑 Отписаться от всех',
+              '🗑 Отписаться',
               'auction_unsubscribe',
             ),
           ],

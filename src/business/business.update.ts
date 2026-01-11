@@ -18,7 +18,7 @@ export class BusinessUpdate {
   @Start()
   async start(@Ctx() ctx: Context) {
     await ctx.reply(
-      '👋 Добро пожаловать в бот мониторинга Evolve RP!\n\n' +
+      '👋 Добро пожаловать в бот мониторинга бизнесов Evolve RP!\n\n' +
         'Выберите действие:',
       Markup.inlineKeyboard([
         [Markup.button.callback('📊 Мониторинг', 'monitoring_menu')],
@@ -86,11 +86,11 @@ export class BusinessUpdate {
     );
 
     if (subscriptions.length === 0) {
-      await ctx.reply('У вас нет активных подписок на уведомления.');
+      await ctx.reply('📋 У вас нет активных подписок на уведомления о мониторинге.');
       return;
     }
 
-    let message = '📋 <b>Ваши подписки:</b>\n\n';
+    let message = '📋 <b>Ваши подписки на мониторинг:</b>\n\n';
 
     for (const sub of subscriptions) {
       message += `🏢 <b>${sub.businessName}</b>\n`;
@@ -108,7 +108,7 @@ export class BusinessUpdate {
         `📊 ${sub.businessName}`,
         `show_${sub.businessName}`,
       ),
-      Markup.button.callback(`🗑`, `unsub_${sub.businessName}`),
+      Markup.button.callback(`🗑 Отписаться`, `unsub_${sub.businessName}`),
     ]);
     buttons.push([Markup.button.callback('🔙 Главное меню', 'back_to_menu')]);
 
@@ -146,7 +146,7 @@ export class BusinessUpdate {
     const businessName = match[1];
 
     this.notificationService.removeSubscription(ctx.from.id, businessName);
-    await ctx.reply(`✅ Подписка на "${businessName}" удалена.`);
+    await ctx.reply(`✅ Подписка на "${businessName}" отменена.`);
     await this.mySubscriptions(ctx);
   }
 
@@ -293,7 +293,7 @@ export class BusinessUpdate {
             'setup_notifications',
           ),
         ],
-        [Markup.button.callback('📊 Мои подписки', 'my_subscriptions')],
+        [Markup.button.callback('📋 Мои подписки', 'my_subscriptions')],
         [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
       ]),
     });
