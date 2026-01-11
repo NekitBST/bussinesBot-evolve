@@ -72,7 +72,7 @@ export class BusinessUpdate {
     await ctx.reply(
       'Список загружен ✅',
       Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
+        [Markup.button.callback('🔙 Назад к мониторингу', 'back_to_monitoring')],
       ]),
     );
   }
@@ -94,7 +94,12 @@ export class BusinessUpdate {
     );
 
     if (subscriptions.length === 0) {
-      await ctx.reply('📋 У вас нет активных подписок на уведомления о мониторинге.');
+      await ctx.reply(
+        '📋 У вас нет активных подписок на уведомления о мониторинге.',
+        Markup.inlineKeyboard([
+          [Markup.button.callback('🔙 Назад', 'back_to_business_notifications')],
+        ]),
+      );
       return;
     }
 
@@ -118,7 +123,7 @@ export class BusinessUpdate {
       ),
       Markup.button.callback(`🗑 Отписаться`, `unsub_${sub.businessName}`),
     ]);
-    buttons.push([Markup.button.callback('🔙 Главное меню', 'back_to_menu')]);
+    buttons.push([Markup.button.callback('🔙 Назад', 'back_to_business_notifications')]);
 
     await ctx.reply(message, {
       parse_mode: 'HTML',
@@ -154,14 +159,31 @@ export class BusinessUpdate {
     const businessName = match[1];
 
     this.notificationService.removeSubscription(ctx.from.id, businessName);
-    await ctx.reply(`✅ Подписка на "${businessName}" отменена.`);
-    await this.mySubscriptions(ctx);
+    
+    await ctx.reply(
+      `✅ Подписка на "${businessName}" отменена.`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback('🔙 Назад', 'back_to_business_notifications')],
+      ]),
+    );
   }
 
   @Action('back_to_menu')
   async backToMenu(@Ctx() ctx: Context) {
     await ctx.answerCbQuery();
     await this.showMenu(ctx);
+  }
+  
+  @Action('back_to_monitoring')
+  async backToMonitoring(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery();
+    await this.monitoringMenu(ctx);
+  }
+
+  @Action('back_to_business_notifications')
+  async backToBusinessNotifications(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery();
+    await this.businessNotificationsMenu(ctx);
   }
 
   @On('text')
@@ -274,7 +296,7 @@ export class BusinessUpdate {
     await ctx.reply(message, {
       parse_mode: 'HTML',
       ...Markup.inlineKeyboard([
-        [Markup.button.callback('🔙 Главное меню', 'back_to_menu')],
+        [Markup.button.callback('🔙 Назад', 'back_to_business_notifications')],
       ]),
     });
   }
