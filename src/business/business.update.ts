@@ -171,7 +171,7 @@ export class BusinessUpdate {
     const state = this.userState.get(userId);
     const text = ctx.message.text;
 
-    if (text === 'Меню' || text === 'меню' || text === 'menu' || text === 'Menu') {
+    if (text === 'Меню' || text === 'меню' || text === 'menu' || text === 'Menu' || text === '⭐ Меню' || text === '⭐ меню') {
       await this.showMenu(ctx);
       return;
     }
